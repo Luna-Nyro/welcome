@@ -9,7 +9,8 @@ venv/
 
 # Packaging / build output
 *.zip
-dist/
+dist/*
+!dist/barkeep-scenes.json
 build/
 
 # Logs and editor/OS clutter

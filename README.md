@@ -21,20 +21,18 @@ lock-screen wallpaper, so you don't see a flash of bare desktop.
   login name if the real name isn't set.
 - **Different every time.** Each run randomises the flow phases, rotation and frequency, swirl
   direction, hue drift, light-sweep angle, the point the reveal grows from, the shape of its edge,
-  the rim tint and the tempo (about ±7%). Every run ends on the plain wallpaper.
+  the rim tint and the duration within your chosen range. Every run ends on the plain wallpaper.
 - **Multi-monitor.** Each monitor gets its own copy of the wallpaper with the correct aspect ratio.
   The greeting appears on the primary monitor.
-- **Settings** (Cinnamon › Extensions › Welcome):
-  | Setting | Default | Notes |
-  |---|---|---|
-  | On login | on | Replaces the black startup fade |
-  | When unlocking the screen | on | |
-  | Show greeting, date and time | on | |
-  | Speed | 1.0 | 0.5–2.0, higher is faster |
-  | Colour motion | 1.0 | 0.2–1.6, how strongly the gradient swirls |
-  | Preview unlock / Preview login | — | Buttons that play the animation now |
+- **Welcome Settings app** (GNOME / Libadwaita): five searchable pages with immediate saving:
+  General (login/unlock and preview), Timing (separate duration ranges and speed), Motion
+  (swirl/waves/aurora/ripple, strength, colour, light, variation), Reveal
+  (bloom/wipes/dissolve, softness and glow), and Greeting (message and date/time).
+- **Optional Touch Bar scenes** for each settings page: Escape, login/unlock previews and page
+  navigation. The app works without barkeep.
 
-At speed 1.0, the login animation lasts about 2.9 s and the unlock animation about 2.0 s.
+Default durations are 2.7–3.1 s at login and 1.9–2.2 s at unlock. The app saves changes
+immediately; the next preview or sign-in uses them.
 
 ## Requirements
 
@@ -44,20 +42,20 @@ At speed 1.0, the login animation lasts about 2.9 s and the unlock animation abo
 - A GPU/driver that supports Clutter GLSL shader effects. Any normal Cinnamon setup should.
 - Optional: the font **Google Sans Flex**, used for the greeting. If it isn't installed, the
   greeting falls back to Ubuntu, then any sans-serif font. No fonts are bundled.
-- For the developer tool only: `python3` and `gdbus`. On most distros, `gdbus` comes with the
-  GLib/`libglib2.0-bin` package.
+- For the settings app: Python 3, PyGObject, GTK 4, Libadwaita 1 and `gdbus`. On Linux Mint,
+  the packages are typically `python3-gi`, `gir1.2-gtk-4.0`, `gir1.2-adw-1` and
+  `libglib2.0-bin`. The animation extension itself does not need the app.
 
 ## Install
 
 ```sh
 git clone https://github.com/Luna-Nyro/welcome.git
 cd welcome
-mkdir -p ~/.local/share/cinnamon/extensions
-ln -s "$PWD/welcome@luna-nyro.github.io" ~/.local/share/cinnamon/extensions/welcome@luna-nyro.github.io
+./install-local.sh
 ```
 
-If you'd rather not keep the clone, copy the folder instead of symlinking it:
-`cp -r welcome@luna-nyro.github.io ~/.local/share/cinnamon/extensions/`.
+The installer links the extension into Cinnamon, adds **Welcome Settings** to the app menu,
+and installs optional Touch Bar scenes if barkeep is present. It can be run again after updates.
 
 Next, open **System Settings › Extensions**, select **Welcome** and enable it. (You may need to
 restart Cinnamon first with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Esc</kbd> or log out and back in.)
@@ -68,8 +66,13 @@ and the preview buttons work straight away.
 
 ## Usage
 
-Once it's enabled there's nothing else to do. The animation plays on login and on unlock. Change
-the options or watch a preview in **System Settings › Extensions › Welcome › Configure**.
+Once enabled, open **Welcome Settings** from the app menu or run `./welcome-settings` from the
+repository. Changes save immediately. Use the preview buttons to see a new version each time.
+You can also use the extension's basic settings in **System Settings › Extensions › Welcome › Configure**.
+
+For scripts and Touch Bar keys, `./welcome-settings --preview unlock` and
+`./welcome-settings --preview login` play the current animation without opening the app. The
+**Alt+1** through **Alt+5** shortcuts switch between the five settings pages.
 
 Test the unlock path without typing a password:
 
@@ -90,13 +93,23 @@ gdbus call --session --dest org.cinnamon.ScreenSaver --object-path /org/cinnamon
    gsettings set org.cinnamon enabled-extensions "[...]"
    ```
    Disabling puts Cinnamon's original startup animation back and stops watching the screensaver.
-2. Remove the extension files:
+2. Remove the optional Touch Bar scenes with `python3 tools/install-bar-scenes.py --remove`.
+   This leaves all other scenes intact. Remove the app menu entry with
+   `rm ~/.local/share/applications/io.github.luna_nyro.WelcomeSettings.desktop`.
+3. Remove the extension files:
    ```sh
    rm ~/.local/share/cinnamon/extensions/welcome@luna-nyro.github.io   # the symlink (or rm -r for a copy)
    ```
-3. Optionally, delete its saved settings:
+4. Optionally, delete its saved settings:
    `rm -r ~/.config/cinnamon/spices/welcome@luna-nyro.github.io` (this path is where Cinnamon normally stores
    extension settings).
+
+## Touch Bar
+
+Five optional scenes follow the active settings page. **Esc** is first; **Unlock** and **Login**
+play previews; **Home**, **Time**, **Flow**, **Reveal** and **Text** jump to the five pages.
+They use the app's own Alt+1…Alt+5 shortcuts. To remove them, run
+`python3 tools/install-bar-scenes.py --remove`. No Touch Bar is needed to use the app.
 
 ## Troubleshooting
 

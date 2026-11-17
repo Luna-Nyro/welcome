@@ -1,0 +1,319 @@
+{
+  "scenes": [
+    {
+      "name": "Welcome: General",
+      "match": [
+        "title:Welcome \u2013 General"
+      ],
+      "colors": [
+        "#10213c",
+        "#2c4f82",
+        "#152b49"
+      ],
+      "keys": [
+        {
+          "icon": "esc",
+          "w": 0.8,
+          "combo": "esc"
+        },
+        {
+          "label": "General",
+          "w": 2.2,
+          "color": "#375184"
+        },
+        {
+          "label": "Unlock",
+          "w": 1.3,
+          "cmd": "@ROOT@/welcome-settings --preview unlock"
+        },
+        {
+          "label": "Login",
+          "w": 1.1,
+          "cmd": "@ROOT@/welcome-settings --preview login"
+        },
+        {
+          "label": "Home",
+          "w": 1.2,
+          "combo": "alt+1",
+          "color": "#4e6fb2"
+        },
+        {
+          "label": "Time",
+          "w": 1.2,
+          "combo": "alt+2",
+          "color": "#23344e"
+        },
+        {
+          "label": "Flow",
+          "w": 1.2,
+          "combo": "alt+3",
+          "color": "#23344e"
+        },
+        {
+          "label": "Reveal",
+          "w": 1.2,
+          "combo": "alt+4",
+          "color": "#23344e"
+        },
+        {
+          "label": "Text",
+          "w": 1.2,
+          "combo": "alt+5",
+          "color": "#23344e"
+        }
+      ]
+    },
+    {
+      "name": "Welcome: Timing",
+      "match": [
+        "title:Welcome \u2013 Timing"
+      ],
+      "colors": [
+        "#10213c",
+        "#2c4f82",
+        "#152b49"
+      ],
+      "keys": [
+        {
+          "icon": "esc",
+          "w": 0.8,
+          "combo": "esc"
+        },
+        {
+          "label": "Timing",
+          "w": 2.2,
+          "color": "#375184"
+        },
+        {
+          "label": "Unlock",
+          "w": 1.3,
+          "cmd": "@ROOT@/welcome-settings --preview unlock"
+        },
+        {
+          "label": "Login",
+          "w": 1.1,
+          "cmd": "@ROOT@/welcome-settings --preview login"
+        },
+        {
+          "label": "Home",
+          "w": 1.2,
+          "combo": "alt+1",
+          "color": "#23344e"
+        },
+        {
+          "label": "Time",
+          "w": 1.2,
+          "combo": "alt+2",
+          "color": "#4e6fb2"
+        },
+        {
+          "label": "Flow",
+          "w": 1.2,
+          "combo": "alt+3",
+          "color": "#23344e"
+        },
+        {
+          "label": "Reveal",
+          "w": 1.2,
+          "combo": "alt+4",
+          "color": "#23344e"
+        },
+        {
+          "label": "Text",
+          "w": 1.2,
+          "combo": "alt+5",
+          "color": "#23344e"
+        }
+      ]
+    },
+    {
+      "name": "Welcome: Motion",
+      "match": [
+        "title:Welcome \u2013 Motion"
+      ],
+      "colors": [
+        "#10213c",
+        "#2c4f82",
+        "#152b49"
+      ],
+      "keys": [
+        {
+          "icon": "esc",
+          "w": 0.8,
+          "combo": "esc"
+        },
+        {
+          "label": "Motion",
+          "w": 2.2,
+          "color": "#375184"
+        },
+        {
+          "label": "Unlock",
+          "w": 1.3,
+          "cmd": "@ROOT@/welcome-settings --preview unlock"
+        },
+        {
+          "label": "Login",
+          "w": 1.1,
+          "cmd": "@ROOT@/welcome-settings --preview login"
+        },
+        {
+          "label": "Home",
+          "w": 1.2,
+          "combo": "alt+1",
+          "color": "#23344e"
+        },
+        {
+          "label": "Time",
+          "w": 1.2,
+          "combo": "alt+2",
+          "color": "#23344e"
+        },
+        {
+          "label": "Flow",
+          "w": 1.2,
+          "combo": "alt+3",
+          "color": "#4e6fb2"
+        },
+        {
+          "label": "Reveal",
+          "w": 1.2,
+          "combo": "alt+4",
+          "color": "#23344e"
+        },
+        {
+          "label": "Text",
+          "w": 1.2,
+          "combo": "alt+5",
+          "color": "#23344e"
+        }
+      ]
+    },
+    {
+      "name": "Welcome: Reveal",
+      "match": [
+        "title:Welcome \u2013 Reveal"
+      ],
+      "colors": [
+        "#10213c",
+        "#2c4f82",
+        "#152b49"
+      ],
+      "keys": [
+        {
+          "icon": "esc",
+          "w": 0.8,
+          "combo": "esc"
+        },
+        {
+          "label": "Reveal",
+          "w": 2.2,
+          "color": "#375184"
+        },
+        {
+          "label": "Unlock",
+          "w": 1.3,
+          "cmd": "@ROOT@/welcome-settings --preview unlock"
+        },
+        {
+          "label": "Login",
+          "w": 1.1,
+          "cmd": "@ROOT@/welcome-settings --preview login"
+        },
+        {
+          "label": "Home",
+          "w": 1.2,
+          "combo": "alt+1",
+          "color": "#23344e"
+        },
+        {
+          "label": "Time",
+          "w": 1.2,
+          "combo": "alt+2",
+          "color": "#23344e"
+        },
+        {
+          "label": "Flow",
+          "w": 1.2,
+          "combo": "alt+3",
+          "color": "#23344e"
+        },
+        {
+          "label": "Reveal",
+          "w": 1.2,
+          "combo": "alt+4",
+          "color": "#4e6fb2"
+        },
+        {
+          "label": "Text",
+          "w": 1.2,
+          "combo": "alt+5",
+          "color": "#23344e"
+        }
+      ]
+    },
+    {
+      "name": "Welcome: Greeting",
+      "match": [
+        "title:Welcome \u2013 Greeting"
+      ],
+      "colors": [
+        "#10213c",
+        "#2c4f82",
+        "#152b49"
+      ],
+      "keys": [
+        {
+          "icon": "esc",
+          "w": 0.8,
+          "combo": "esc"
+        },
+        {
+          "label": "Greeting",
+          "w": 2.2,
+          "color": "#375184"
+        },
+        {
+          "label": "Unlock",
+          "w": 1.3,
+          "cmd": "@ROOT@/welcome-settings --preview unlock"
+        },
+        {
+          "label": "Login",
+          "w": 1.1,
+          "cmd": "@ROOT@/welcome-settings --preview login"
+        },
+        {
+          "label": "Home",
+          "w": 1.2,
+          "combo": "alt+1",
+          "color": "#23344e"
+        },
+        {
+          "label": "Time",
+          "w": 1.2,
+          "combo": "alt+2",
+          "color": "#23344e"
+        },
+        {
+          "label": "Flow",
+          "w": 1.2,
+          "combo": "alt+3",
+          "color": "#23344e"
+        },
+        {
+          "label": "Reveal",
+          "w": 1.2,
+          "combo": "alt+4",
+          "color": "#23344e"
+        },
+        {
+          "label": "Text",
+          "w": 1.2,
+          "combo": "alt+5",
+          "color": "#4e6fb2"
+        }
+      ]
+    }
+  ]
+}

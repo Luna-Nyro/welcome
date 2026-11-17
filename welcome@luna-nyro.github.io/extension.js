@@ -42,6 +42,7 @@ uniform float sweepA;               // light-sweep direction (radians)
 uniform float ox, oy;               // reveal origin offset from the centre
 uniform float lobeA, lobeB, lobeC;  // reveal-edge wobble lobes
 uniform float rimR, rimG, rimB;     // rim tint
+uniform float pattern, revealPattern, hueStrength, sweepStrength, edgeSoftness, glowStrength;
 
 // Fold out-of-range coords back in without a derivative jump (mod() causes mip seams).
 vec2 mirror(vec2 u) { u = abs(u); return 1.0 - abs(1.0 - u); }
@@ -63,7 +64,7 @@ void main() {
     float r = length(p);
 
     // Swirl around the centre, strongest in the middle.
-    float sw = amp * swirl * (1.0 - smoothstep(0.0, 0.95, r)) * sin(t * 1.25 + 0.6 + ph4 * 0.3);
+    float sw = amp * swirl * (1.0 - step(0.5, pattern)) * (1.0 - smoothstep(0.0, 0.95, r)) * sin(t * 1.25 + 0.6 + ph4 * 0.3);
     float cs = cos(sw), sn = sin(sw);
     vec2 q = mat2(cs, sn, -sn, cs) * p;
 
@@ -75,7 +76,14 @@ void main() {
                    cos(f.x * 2.7 - t * 1.10 + ph3) + sin(f.y * 1.9 + t * 1.50 + ph4));
     vec2 w2 = vec2(sin((f.y + w1.y * 0.18) * 4.3 + t * 1.75 + ph2),
                    cos((f.x + w1.x * 0.18) * 3.7 - t * 1.40 + ph1));
-    q += (R * (w1 * 0.065 + w2 * 0.035)) * amp;
+    vec2 flow = R * (w1 * 0.065 + w2 * 0.035);
+    if (pattern > 0.5 && pattern < 1.5)
+        flow = vec2(sin(f.y * 8.0 + t * 2.4 + ph1), cos(f.x * 6.0 - t * 1.8 + ph2)) * 0.075;
+    else if (pattern > 1.5 && pattern < 2.5)
+        flow = vec2(sin(f.y * 5.0 + t * 0.9 + sin(f.x * 3.0)), cos(f.x * 2.5 + t + ph2)) * 0.10;
+    else if (pattern > 2.5)
+        flow = normalize(q + vec2(0.001)) * sin(length(q) * 22.0 - t * 4.0 + ph1) * 0.07;
+    q += flow * amp;
 
     // Gentle breathing zoom that settles to 1.0.
     q *= 1.0 - 0.06 * amp;
@@ -84,11 +92,11 @@ void main() {
     vec4 c = texture2D(tex, clamp(mirror(q + 0.5), 0.004, 0.996));
 
     // Colour drift: hue wanders across the screen and a soft light sweeps through.
-    float hue = amp * hueAmt * sin(t * 1.6 + uv.x * 3.2 - uv.y * 2.1 + ph3);
+    float hue = amp * hueStrength * hueAmt * sin(t * 1.6 + uv.x * 3.2 - uv.y * 2.1 + ph3);
     c.rgb = hueShift(c.rgb, hue);
     vec2 sd = vec2(cos(sweepA), sin(sweepA));
     float sweep = exp(-pow(dot(uv - 0.5, sd) + 0.75 - (t * 0.55), 2.0) * 18.0);
-    c.rgb += vec3(0.10, 0.12, 0.16) * sweep * amp;
+    c.rgb += vec3(0.10, 0.12, 0.16) * sweep * amp * sweepStrength;
     // A touch of extra saturation while alive.
     float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
     c.rgb = mix(vec3(l), c.rgb, 1.0 + 0.35 * amp);
@@ -100,15 +108,18 @@ void main() {
     float ang = atan(pr.y, pr.x);
     float wob = 0.035 * sin(ang * lobeA + t * 2.3 + ph1) + 0.022 * sin(ang * lobeB - t * 3.1 + ph2) + 0.015 * sin(ang * lobeC + t * 1.2 + ph3);
     float maxR = 0.5 * sqrt(aspect * aspect + 1.0) + length(o) + 0.12;
-    float feather = 0.16;
+    float feather = 0.16 * edgeSoftness;
     float edge = reveal * (maxR + feather + 0.08);
     float d = r + wob * (0.4 + reveal) * smoothstep(0.02, 0.25, r);
+    if (revealPattern > 0.5 && revealPattern < 1.5) d = (pr.x + aspect * 0.5) * (maxR / aspect);
+    else if (revealPattern > 1.5 && revealPattern < 2.5) d = (pr.y + 0.5) * maxR;
+    else if (revealPattern > 2.5) d = maxR * (fract(sin(dot(floor(uv * 120.0), vec2(12.9898, 78.233))) * 43758.5453));
     float a = smoothstep(edge - feather, edge, d);
     float rim = (1.0 - abs(d - (edge - feather * 0.45)) / (feather * 0.6));
     rim = clamp(rim, 0.0, 1.0) * smoothstep(0.0, 0.08, reveal) * (1.0 - reveal * 0.6);
 
-    vec3 col = clamp(c.rgb, 0.0, 1.0) * fade + vec3(rimR, rimG, rimB) * rim * 0.32;
-    float alpha = clamp(a + rim * 0.25, 0.0, 1.0);
+    vec3 col = clamp(c.rgb, 0.0, 1.0) * fade + vec3(rimR, rimG, rimB) * rim * 0.32 * glowStrength;
+    float alpha = clamp(a + rim * 0.25 * glowStrength, 0.0, 1.0);
     cogl_color_out = vec4(col * alpha, alpha);
 }`;
 
@@ -147,7 +158,7 @@ function _greeting(kind) {
 
 // A fresh look every time: random phases, flow orientation, swirl direction, sweep angle,
 // reveal origin and edge shape. Integer lobe counts keep the reveal edge seamless around the circle.
-function _variation() {
+function _variation(randomness) {
     const rnd = (a, b) => a + Math.random() * (b - a);
     const pick = arr => arr[Math.floor(Math.random() * arr.length)];
     const sign = () => (Math.random() < 0.5 ? -1 : 1);
@@ -158,7 +169,7 @@ function _variation() {
     const rims = [[0.85, 0.93, 1.0], [0.80, 0.97, 0.98], [0.90, 0.88, 1.0], [0.95, 0.96, 0.92]];
     const rim = pick(rims);
     let originAng = rnd(0, Math.PI * 2), originDist = rnd(0, 0.09);
-    return {
+    const v = {
         ph1: rnd(0, 6.283), ph2: rnd(0, 6.283), ph3: rnd(0, 6.283), ph4: rnd(0, 6.283),
         fq: rnd(0.8, 1.25), frot: rnd(0, 6.283),
         swirl: sign() * rnd(0.8, 1.35),
@@ -167,8 +178,17 @@ function _variation() {
         ox: Math.cos(originAng) * originDist, oy: Math.sin(originAng) * originDist,
         lobeA: a, lobeB: b, lobeC: c,
         rimR: rim[0], rimG: rim[1], rimB: rim[2],
-        tempo: rnd(0.93, 1.08),   // small timing jitter
     };
+    // At zero variation the same default seed is used on every run.
+    const fixed = { ph1: 0, ph2: 1.7, ph3: 0, ph4: 0.6, fq: 1, frot: 0,
+        swirl: 1.15, hueAmt: 0.24, sweepA: 0, ox: 0, oy: 0,
+        lobeA: 5, lobeB: 9, lobeC: 3, rimR: 0.85, rimG: 0.93, rimB: 1 };
+    let amount = Math.max(0, Math.min(1, randomness));
+    for (let key in v) {
+        if (key.startsWith('lobe')) v[key] = Math.random() < amount ? v[key] : fixed[key];
+        else v[key] = fixed[key] + (v[key] - fixed[key]) * amount;
+    }
+    return v;
 }
 
 const ease = {
@@ -186,7 +206,13 @@ class Overlay {
     constructor(opts) {
         this.opts = opts;
         this.kind = null;
-        this.vary = _variation();
+        this.vary = _variation(opts.randomness);
+        this.shaderOptions = {
+            pattern: ['swirl', 'waves', 'aurora', 'ripple'].indexOf(opts.motionPattern),
+            revealPattern: ['bloom', 'horizontal', 'vertical', 'dissolve'].indexOf(opts.revealPattern),
+            hueStrength: opts.hueStrength, sweepStrength: opts.sweepStrength,
+            edgeSoftness: opts.edgeSoftness, glowStrength: opts.glowStrength,
+        };
         this.timeline = null;
         this.effects = [];
         this.label = null;
@@ -238,7 +264,8 @@ class Overlay {
             fx.set_shader_source(FRAG);
             fx.set_uniform_value('tex', 0);
             fx.set_uniform_value('aspect', _float(e.aspect));
-            for (let k in this.vary) if (k !== 'tempo') fx.set_uniform_value(k, _float(this.vary[k]));
+            for (let k in this.vary) fx.set_uniform_value(k, _float(this.vary[k]));
+            for (let k in this.shaderOptions) fx.set_uniform_value(k, _float(this.shaderOptions[k]));
             e.effect = fx;
             e.widget.add_effect_with_name('welcome-flow', fx);
         }
@@ -255,7 +282,7 @@ class Overlay {
         let scale = St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
         let m = this.primaryRect;
         this.textBox = new St.BoxLayout({ vertical: true, x_align: Clutter.ActorAlign.CENTER, reactive: false });
-        this.label = new St.Label({ text: _greeting(kind),
+        this.label = new St.Label({ text: (this.opts.customGreeting || '').trim() || _greeting(kind),
             style: `font-family: Google Sans Flex, Ubuntu, sans-serif; font-size: ${Math.round(m.height / 28)}px;` +
                    ' font-weight: 400; color: rgba(255,255,255,0.97); text-align: center;' +
                    ' text-shadow: 0 2px 18px rgba(0,30,60,0.55);' });
@@ -268,7 +295,7 @@ class Overlay {
                    ' color: rgba(255,255,255,0.82); text-align: center; padding-top: 10px;' +
                    ' text-shadow: 0 1px 10px rgba(0,30,60,0.55);' });
         this.textBox.add_child(this.label);
-        this.textBox.add_child(this.sub);
+        if (this.opts.showDate) this.textBox.add_child(this.sub);
         this.textBox.opacity = 0;
         this.actor.add_child(this.textBox);
         // centre on the primary monitor once sized
@@ -287,7 +314,11 @@ class Overlay {
         this.prime(fadeFrom);
         if (this.opts.greeting) this._buildText(kind);
 
-        let speed = Math.max(0.5, Math.min(2, this.opts.speed || 1)) * this.vary.tempo;
+        let range = kind === 'login' ? [this.opts.loginMin, this.opts.loginMax] : [this.opts.unlockMin, this.opts.unlockMax];
+        let low = Math.min(...range), high = Math.max(...range);
+        let duration = (low + high) / 2 + (Math.random() - 0.5) * (high - low) * this.opts.randomness;
+        duration = Math.max(0.8, Math.min(8, duration)) / Math.max(0.5, Math.min(2, this.opts.speed || 1));
+        let speed = (kind === 'login' ? 2.85 : 2.0) / duration;
         // Phase plan (seconds, before speed scaling)
         const P = kind === 'login'
             ? { fadeIn: [0, 0.75], textIn: [0.25, 1.0], textOut: [1.65, 2.25], reveal: [1.55, 2.85], total: 2.85 }
@@ -350,7 +381,11 @@ class Overlay {
 class Welcome {
     constructor(meta) {
         this.meta = meta;
-        this.opts = { onLogin: true, onUnlock: true, greeting: true, speed: 1.0, intensity: 1.0 };
+        this.opts = { onLogin: true, onUnlock: true, greeting: true, showDate: true,
+            customGreeting: '', speed: 1.0, intensity: 1.0, randomness: 1,
+            motionPattern: 'swirl', revealPattern: 'bloom', loginMin: 2.7, loginMax: 3.1,
+            unlockMin: 1.9, unlockMax: 2.2, hueStrength: 1, sweepStrength: 1,
+            edgeSoftness: 1, glowStrength: 1 };
         this.overlay = null;
         this.parked = null;      // overlay parked under the screensaver window
         this.ssActor = null;
@@ -367,6 +402,14 @@ class Welcome {
             this.settings.bind('greeting', 'greeting');
             this.settings.bind('speed', 'speed');
             this.settings.bind('intensity', 'intensity');
+            for (let [key, prop] of [
+                ['show-date','showDate'], ['custom-greeting','customGreeting'],
+                ['randomness','randomness'], ['motion-pattern','motionPattern'],
+                ['reveal-pattern','revealPattern'], ['login-min','loginMin'],
+                ['login-max','loginMax'], ['unlock-min','unlockMin'], ['unlock-max','unlockMax'],
+                ['hue-strength','hueStrength'], ['sweep-strength','sweepStrength'],
+                ['edge-softness','edgeSoftness'], ['glow-strength','glowStrength']])
+                this.settings.bind(key, prop);
             this.opts.preview = () => this.preview('unlock');
             this.opts.previewLogin = () => this.preview('login');
         } catch (e) {

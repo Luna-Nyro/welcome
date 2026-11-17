@@ -1,12 +1,173 @@
 {
-    "head": { "type": "header", "description": "When to play" },
-    "on-login": { "type": "switch", "default": true, "description": "On login (replaces the black startup fade)" },
-    "on-unlock": { "type": "switch", "default": true, "description": "When unlocking the screen" },
-    "head2": { "type": "header", "description": "Look" },
-    "greeting": { "type": "switch", "default": true, "description": "Show greeting, date and time" },
-    "speed": { "type": "scale", "default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1, "description": "Speed", "tooltip": "Higher is faster" },
-    "intensity": { "type": "scale", "default": 1.0, "min": 0.2, "max": 1.6, "step": 0.1, "description": "Colour motion", "tooltip": "How strongly the gradient swirls" },
-    "head3": { "type": "header", "description": "Preview" },
-    "btn-unlock": { "type": "button", "description": "Preview unlock", "callback": "preview" },
-    "btn-login": { "type": "button", "description": "Preview login", "callback": "previewLogin" }
+    "general": {
+        "type": "header",
+        "description": "General"
+    },
+    "on-login": {
+        "type": "switch",
+        "default": true,
+        "description": "On login (replaces the black startup fade)"
+    },
+    "on-unlock": {
+        "type": "switch",
+        "default": true,
+        "description": "When unlocking the screen"
+    },
+    "timing": {
+        "type": "header",
+        "description": "Timing"
+    },
+    "login-min": {
+        "type": "scale",
+        "default": 2.7,
+        "description": "Login: shortest duration (seconds)",
+        "min": 0.8,
+        "max": 8.0,
+        "step": 0.1
+    },
+    "login-max": {
+        "type": "scale",
+        "default": 3.1,
+        "description": "Login: longest duration (seconds)",
+        "min": 0.8,
+        "max": 8.0,
+        "step": 0.1
+    },
+    "unlock-min": {
+        "type": "scale",
+        "default": 1.9,
+        "description": "Unlock: shortest duration (seconds)",
+        "min": 0.8,
+        "max": 8.0,
+        "step": 0.1
+    },
+    "unlock-max": {
+        "type": "scale",
+        "default": 2.2,
+        "description": "Unlock: longest duration (seconds)",
+        "min": 0.8,
+        "max": 8.0,
+        "step": 0.1
+    },
+    "speed": {
+        "type": "scale",
+        "default": 1.0,
+        "min": 0.5,
+        "max": 2.0,
+        "step": 0.1,
+        "description": "Speed",
+        "tooltip": "Higher is faster"
+    },
+    "motion": {
+        "type": "header",
+        "description": "Motion"
+    },
+    "motion-pattern": {
+        "type": "combobox",
+        "default": "swirl",
+        "description": "Motion pattern",
+        "options": {
+            "Swirl": "swirl",
+            "Waves": "waves",
+            "Aurora": "aurora",
+            "Ripple": "ripple"
+        }
+    },
+    "intensity": {
+        "type": "scale",
+        "default": 1.0,
+        "min": 0.2,
+        "max": 1.6,
+        "step": 0.1,
+        "description": "Colour motion",
+        "tooltip": "How strongly the gradient swirls"
+    },
+    "hue-strength": {
+        "type": "scale",
+        "default": 1.0,
+        "description": "Colour drift",
+        "min": 0.0,
+        "max": 2.0,
+        "step": 0.1
+    },
+    "sweep-strength": {
+        "type": "scale",
+        "default": 1.0,
+        "description": "Light sweep",
+        "min": 0.0,
+        "max": 2.0,
+        "step": 0.1
+    },
+    "randomness": {
+        "type": "scale",
+        "default": 1.0,
+        "description": "Variation each time",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.05
+    },
+    "reveal": {
+        "type": "header",
+        "description": "Reveal"
+    },
+    "reveal-pattern": {
+        "type": "combobox",
+        "default": "bloom",
+        "description": "Reveal pattern",
+        "options": {
+            "Bloom": "bloom",
+            "Horizontal wipe": "horizontal",
+            "Vertical wipe": "vertical",
+            "Soft dissolve": "dissolve"
+        }
+    },
+    "edge-softness": {
+        "type": "scale",
+        "default": 1.0,
+        "description": "Reveal edge softness",
+        "min": 0.3,
+        "max": 2.0,
+        "step": 0.1
+    },
+    "glow-strength": {
+        "type": "scale",
+        "default": 1.0,
+        "description": "Reveal glow",
+        "min": 0.0,
+        "max": 2.0,
+        "step": 0.1
+    },
+    "greeting-options": {
+        "type": "header",
+        "description": "Greeting"
+    },
+    "greeting": {
+        "type": "switch",
+        "default": true,
+        "description": "Show greeting, date and time"
+    },
+    "show-date": {
+        "type": "switch",
+        "default": true,
+        "description": "Show date and time"
+    },
+    "custom-greeting": {
+        "type": "entry",
+        "default": "",
+        "description": "Custom greeting (optional)"
+    },
+    "preview": {
+        "type": "header",
+        "description": "Preview"
+    },
+    "btn-unlock": {
+        "type": "button",
+        "description": "Preview unlock",
+        "callback": "preview"
+    },
+    "btn-login": {
+        "type": "button",
+        "description": "Preview login",
+        "callback": "previewLogin"
+    }
 }
