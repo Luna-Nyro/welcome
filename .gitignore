@@ -1,0 +1,24 @@
+# Local prep notes (not part of the project)
+PREP-REPORT.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Packaging / build output
+*.zip
+dist/
+build/
+
+# Logs and editor/OS clutter
+*.log
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Legal-review bundle (contains private data; never commit)
+review.tgz
