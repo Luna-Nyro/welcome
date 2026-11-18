@@ -77,7 +77,7 @@ class Window(Adw.PreferencesWindow):
             self.set_title(f'Welcome – {page.get_title()}')
 
     def _key_pressed(self, _controller, keyval, _keycode, state):
-        if state & Gdk.ModifierType.MOD1_MASK and Gdk.KEY_1 <= keyval <= Gdk.KEY_5:
+        if state & Gdk.ModifierType.ALT_MASK and Gdk.KEY_1 <= keyval < Gdk.KEY_1 + len(self.pages):
             self.set_visible_page(self.pages[keyval - Gdk.KEY_1])
             return True
         return False
@@ -147,6 +147,7 @@ class Window(Adw.PreferencesWindow):
         row.add_suffix(scale)
         row.add_suffix(label)
         group.add(row)
+        adjustment.row = row
         return adjustment
 
     def button(self, group, title, subtitle, icon, callback):
@@ -175,13 +176,40 @@ class Window(Adw.PreferencesWindow):
                             'Choose when Welcome plays and try it on this desktop.')
         on = self.group(general, 'Play on')
         self.switch(on, 'on-login', 'Login', 'Replace Cinnamon’s startup fade')
-        self.switch(on, 'on-unlock', 'Unlock', 'Play after the lock screen closes')
+        unlock = self.switch(on, 'on-unlock', 'Unlock', 'Play after the lock screen closes')
+        unlock.connect('notify::active', lambda r, _: [g.set_sensitive(r.get_active())
+                                                       for g in getattr(self, 'lock_groups', ())])
         previews = self.group(general, 'Preview', 'Each preview uses your current settings and a fresh variation.')
         self.button(previews, 'Preview unlock', 'Play on this desktop', 'media-playback-start-symbolic',
                     lambda: self._preview('unlock'))
         self.button(previews, 'Preview login', 'Play on this desktop', 'media-playback-start-symbolic',
                     lambda: self._preview('login'))
+        self.button(previews, 'Preview lock screen', 'A few seconds of the loop, then the unlock',
+                    'media-playback-start-symbolic', lambda: self._preview('lock'))
         self.group(general, 'Tip', 'Move the pointer to a comfortable place before previewing. The animation covers all monitors briefly.')
+
+        lock = self.page('Lock screen', 'system-lock-screen-symbolic',
+                         'Let the wallpaper flow behind the lock screen, then carry that motion into the desktop.')
+        looping = self.group(lock, 'While locked', 'Only the wallpaper moves. The clock, password prompt and media controls stay exactly as they are.')
+        self.combo(looping, 'lock-loop', 'Animate the wallpaper', '“Always” also plays while only the clock is shown',
+                   [('With the password prompt', 'prompt'), ('Always', 'always'), ('Never', 'off')])
+        speed = self.slider(looping, 'lock-speed', 'Loop speed', '', 0.1, 1.5, step=0.05, unit='×')
+        def loop_length(adj):
+            seconds = 24 / max(adj.get_value(), 0.05)
+            adj.row.set_subtitle(f'One seamless loop every {seconds:.0f} s')
+        speed.connect('value-changed', loop_length)
+        loop_length(speed)
+        self.slider(looping, 'lock-intensity', 'Motion', 'How strongly the colours flow while locked', 0.1, 1.2, step=0.05)
+        onward = self.group(lock, 'Into the desktop',
+                            'When your password is accepted, the same motion speeds up and opens onto the desktop.')
+        self.slider(onward, 'unlock-boost', 'Speed-up', 'How much faster the loop runs once you unlock', 1, 5, unit='×')
+        self.slider(onward, 'unlock-surge', 'Extra motion', 'How much stronger the colours move on the way in', 0.5, 2, step=0.05)
+        self.button(self.group(lock, 'Preview'), 'Preview lock screen', 'A few seconds of the loop, then the unlock',
+                    'media-playback-start-symbolic', lambda: self._preview('lock'))
+        self.group(lock, 'Power', 'The loop fades out when the prompt hides (after 30 seconds without input) and never runs while the screen is off. The lock screen needs “Unlock” turned on in General.')
+        for group in (looping, onward):
+            group.set_sensitive(bool(self.values['on-unlock']))
+        self.lock_groups = (looping, onward)
 
         timing = self.page('Timing', 'alarm-symbolic',
                            'Set a duration range. Welcome picks a time inside it for each run.')
@@ -243,7 +271,7 @@ class Application(Adw.Application):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3 and sys.argv[1] == '--preview' and sys.argv[2] in ('login', 'unlock'):
+    if len(sys.argv) == 3 and sys.argv[1] == '--preview' and sys.argv[2] in ('login', 'unlock', 'lock'):
         try:
             result = preview(sys.argv[2])
             sys.exit(0 if result.returncode == 0 and 'offline' not in result.stdout

@@ -3,7 +3,7 @@
     {
       "name": "Welcome: General",
       "match": [
-        "title:Welcome \u2013 General"
+        "title:Welcome – General"
       ],
       "colors": [
         "#10213c",
@@ -18,7 +18,7 @@
         },
         {
           "label": "General",
-          "w": 2.2,
+          "w": 1.7,
           "color": "#375184"
         },
         {
@@ -33,32 +33,107 @@
         },
         {
           "label": "Home",
-          "w": 1.2,
+          "w": 1.05,
           "combo": "alt+1",
           "color": "#4e6fb2"
         },
         {
-          "label": "Time",
-          "w": 1.2,
+          "label": "Lock",
+          "w": 1.05,
           "combo": "alt+2",
           "color": "#23344e"
         },
         {
-          "label": "Flow",
-          "w": 1.2,
+          "label": "Time",
+          "w": 1.05,
           "combo": "alt+3",
           "color": "#23344e"
         },
         {
-          "label": "Reveal",
-          "w": 1.2,
+          "label": "Flow",
+          "w": 1.05,
           "combo": "alt+4",
           "color": "#23344e"
         },
         {
-          "label": "Text",
-          "w": 1.2,
+          "label": "Reveal",
+          "w": 1.05,
           "combo": "alt+5",
+          "color": "#23344e"
+        },
+        {
+          "label": "Text",
+          "w": 1.05,
+          "combo": "alt+6",
+          "color": "#23344e"
+        }
+      ]
+    },
+    {
+      "name": "Welcome: Lock screen",
+      "match": [
+        "title:Welcome – Lock screen"
+      ],
+      "colors": [
+        "#10213c",
+        "#2c4f82",
+        "#152b49"
+      ],
+      "keys": [
+        {
+          "icon": "esc",
+          "w": 0.8,
+          "combo": "esc"
+        },
+        {
+          "label": "Lock screen",
+          "w": 1.7,
+          "color": "#375184"
+        },
+        {
+          "label": "Unlock",
+          "w": 1.3,
+          "cmd": "@ROOT@/welcome-settings --preview unlock"
+        },
+        {
+          "label": "Loop",
+          "w": 1.1,
+          "cmd": "@ROOT@/welcome-settings --preview lock"
+        },
+        {
+          "label": "Home",
+          "w": 1.05,
+          "combo": "alt+1",
+          "color": "#23344e"
+        },
+        {
+          "label": "Lock",
+          "w": 1.05,
+          "combo": "alt+2",
+          "color": "#4e6fb2"
+        },
+        {
+          "label": "Time",
+          "w": 1.05,
+          "combo": "alt+3",
+          "color": "#23344e"
+        },
+        {
+          "label": "Flow",
+          "w": 1.05,
+          "combo": "alt+4",
+          "color": "#23344e"
+        },
+        {
+          "label": "Reveal",
+          "w": 1.05,
+          "combo": "alt+5",
+          "color": "#23344e"
+        },
+        {
+          "label": "Text",
+          "w": 1.05,
+          "combo": "alt+6",
           "color": "#23344e"
         }
       ]
@@ -66,7 +141,7 @@
     {
       "name": "Welcome: Timing",
       "match": [
-        "title:Welcome \u2013 Timing"
+        "title:Welcome – Timing"
       ],
       "colors": [
         "#10213c",
@@ -81,7 +156,7 @@
         },
         {
           "label": "Timing",
-          "w": 2.2,
+          "w": 1.7,
           "color": "#375184"
         },
         {
@@ -96,32 +171,38 @@
         },
         {
           "label": "Home",
-          "w": 1.2,
+          "w": 1.05,
           "combo": "alt+1",
           "color": "#23344e"
         },
         {
-          "label": "Time",
-          "w": 1.2,
+          "label": "Lock",
+          "w": 1.05,
           "combo": "alt+2",
+          "color": "#23344e"
+        },
+        {
+          "label": "Time",
+          "w": 1.05,
+          "combo": "alt+3",
           "color": "#4e6fb2"
         },
         {
           "label": "Flow",
-          "w": 1.2,
-          "combo": "alt+3",
-          "color": "#23344e"
-        },
-        {
-          "label": "Reveal",
-          "w": 1.2,
+          "w": 1.05,
           "combo": "alt+4",
           "color": "#23344e"
         },
         {
-          "label": "Text",
-          "w": 1.2,
+          "label": "Reveal",
+          "w": 1.05,
           "combo": "alt+5",
+          "color": "#23344e"
+        },
+        {
+          "label": "Text",
+          "w": 1.05,
+          "combo": "alt+6",
           "color": "#23344e"
         }
       ]
@@ -129,7 +210,7 @@
     {
       "name": "Welcome: Motion",
       "match": [
-        "title:Welcome \u2013 Motion"
+        "title:Welcome – Motion"
       ],
       "colors": [
         "#10213c",
@@ -144,7 +225,7 @@
         },
         {
           "label": "Motion",
-          "w": 2.2,
+          "w": 1.7,
           "color": "#375184"
         },
         {
@@ -159,32 +240,38 @@
         },
         {
           "label": "Home",
-          "w": 1.2,
+          "w": 1.05,
           "combo": "alt+1",
           "color": "#23344e"
         },
         {
-          "label": "Time",
-          "w": 1.2,
+          "label": "Lock",
+          "w": 1.05,
           "combo": "alt+2",
           "color": "#23344e"
         },
         {
-          "label": "Flow",
-          "w": 1.2,
+          "label": "Time",
+          "w": 1.05,
           "combo": "alt+3",
+          "color": "#23344e"
+        },
+        {
+          "label": "Flow",
+          "w": 1.05,
+          "combo": "alt+4",
           "color": "#4e6fb2"
         },
         {
           "label": "Reveal",
-          "w": 1.2,
-          "combo": "alt+4",
+          "w": 1.05,
+          "combo": "alt+5",
           "color": "#23344e"
         },
         {
           "label": "Text",
-          "w": 1.2,
-          "combo": "alt+5",
+          "w": 1.05,
+          "combo": "alt+6",
           "color": "#23344e"
         }
       ]
@@ -192,7 +279,7 @@
     {
       "name": "Welcome: Reveal",
       "match": [
-        "title:Welcome \u2013 Reveal"
+        "title:Welcome – Reveal"
       ],
       "colors": [
         "#10213c",
@@ -207,7 +294,7 @@
         },
         {
           "label": "Reveal",
-          "w": 2.2,
+          "w": 1.7,
           "color": "#375184"
         },
         {
@@ -222,32 +309,38 @@
         },
         {
           "label": "Home",
-          "w": 1.2,
+          "w": 1.05,
           "combo": "alt+1",
           "color": "#23344e"
         },
         {
-          "label": "Time",
-          "w": 1.2,
+          "label": "Lock",
+          "w": 1.05,
           "combo": "alt+2",
           "color": "#23344e"
         },
         {
-          "label": "Flow",
-          "w": 1.2,
+          "label": "Time",
+          "w": 1.05,
           "combo": "alt+3",
           "color": "#23344e"
         },
         {
-          "label": "Reveal",
-          "w": 1.2,
+          "label": "Flow",
+          "w": 1.05,
           "combo": "alt+4",
+          "color": "#23344e"
+        },
+        {
+          "label": "Reveal",
+          "w": 1.05,
+          "combo": "alt+5",
           "color": "#4e6fb2"
         },
         {
           "label": "Text",
-          "w": 1.2,
-          "combo": "alt+5",
+          "w": 1.05,
+          "combo": "alt+6",
           "color": "#23344e"
         }
       ]
@@ -255,7 +348,7 @@
     {
       "name": "Welcome: Greeting",
       "match": [
-        "title:Welcome \u2013 Greeting"
+        "title:Welcome – Greeting"
       ],
       "colors": [
         "#10213c",
@@ -270,7 +363,7 @@
         },
         {
           "label": "Greeting",
-          "w": 2.2,
+          "w": 1.7,
           "color": "#375184"
         },
         {
@@ -285,32 +378,38 @@
         },
         {
           "label": "Home",
-          "w": 1.2,
+          "w": 1.05,
           "combo": "alt+1",
           "color": "#23344e"
         },
         {
-          "label": "Time",
-          "w": 1.2,
+          "label": "Lock",
+          "w": 1.05,
           "combo": "alt+2",
           "color": "#23344e"
         },
         {
-          "label": "Flow",
-          "w": 1.2,
+          "label": "Time",
+          "w": 1.05,
           "combo": "alt+3",
           "color": "#23344e"
         },
         {
-          "label": "Reveal",
-          "w": 1.2,
+          "label": "Flow",
+          "w": 1.05,
           "combo": "alt+4",
           "color": "#23344e"
         },
         {
-          "label": "Text",
-          "w": 1.2,
+          "label": "Reveal",
+          "w": 1.05,
           "combo": "alt+5",
+          "color": "#23344e"
+        },
+        {
+          "label": "Text",
+          "w": 1.05,
+          "combo": "alt+6",
           "color": "#4e6fb2"
         }
       ]

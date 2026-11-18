@@ -5,8 +5,9 @@ unlock the screen. Your wallpaper comes alive: its colours swirl and drift (a GL
 drift and a light sweep), and a greeting fades in. Then the desktop opens from the centre through a
 glowing, organic edge while the colours settle back onto the still wallpaper.
 
-On login it takes the place of Cinnamon's black startup fade. On unlock it picks up from the dimmed
-lock-screen wallpaper, so you don't see a flash of bare desktop.
+On login it takes the place of Cinnamon's black startup fade. While the screen is locked and the
+password prompt is up, the wallpaper behind the lock screen flows in a calm, seamless loop. When you
+unlock, that same motion carries on, faster and stronger, and opens onto the desktop.
 
 > No screenshots or recordings are included yet. Use **Preview** in the settings (see below) to see it.
 
@@ -14,8 +15,13 @@ lock-screen wallpaper, so you don't see a flash of bare desktop.
 
 - **Login transition.** Takes over Cinnamon's startup animation and hands the session back (input,
   cursor, panels) as soon as the reveal begins.
-- **Unlock transition.** Starts from the same 70%-black dim that `cinnamon-screensaver` draws over
-  the wallpaper, so the hand-off is seamless.
+- **Lock-screen loop.** While the password prompt is shown (or always, if you prefer), the
+  wallpaper behind the lock screen flows in a loop that repeats without a visible seam. Only the
+  wallpaper moves: the clock, prompt, avatar and media controls are left untouched. The loop fades
+  out when the prompt hides and never runs while the screen is off.
+- **Unlock transition.** Continues the lock-screen loop from the exact frame it was on, at the same
+  70%-black dim that `cinnamon-screensaver` uses, then speeds up and surges into the reveal. There is
+  no jump or flash at the hand-off.
 - **Greeting.** "Good morning/afternoon/evening/night, *Name*" on login, "Welcome back, *Name*" on
   unlock, plus the date and time. The name is the first word of your account's real name, or your
   login name if the real name isn't set.
@@ -24,8 +30,9 @@ lock-screen wallpaper, so you don't see a flash of bare desktop.
   the rim tint and the duration within your chosen range. Every run ends on the plain wallpaper.
 - **Multi-monitor.** Each monitor gets its own copy of the wallpaper with the correct aspect ratio.
   The greeting appears on the primary monitor.
-- **Welcome Settings app** (GNOME / Libadwaita): five searchable pages with immediate saving:
-  General (login/unlock and preview), Timing (separate duration ranges and speed), Motion
+- **Welcome Settings app** (GNOME / Libadwaita): six searchable pages with immediate saving:
+  General (login/unlock and previews), Lock screen (when the loop plays, loop speed and strength,
+  how much faster and stronger it gets on unlock), Timing (separate duration ranges and speed), Motion
   (swirl/waves/aurora/ripple, strength, colour, light, variation), Reveal
   (bloom/wipes/dissolve, softness and glow), and Greeting (message and date/time).
 - **Optional Touch Bar scenes** for each settings page: Escape, login/unlock previews and page
@@ -70,11 +77,13 @@ Once enabled, open **Welcome Settings** from the app menu or run `./welcome-sett
 repository. Changes save immediately. Use the preview buttons to see a new version each time.
 You can also use the extension's basic settings in **System Settings › Extensions › Welcome › Configure**.
 
-For scripts and Touch Bar keys, `./welcome-settings --preview unlock` and
-`./welcome-settings --preview login` play the current animation without opening the app. The
-**Alt+1** through **Alt+5** shortcuts switch between the five settings pages.
+For scripts and Touch Bar keys, `./welcome-settings --preview unlock`,
+`./welcome-settings --preview login` and `./welcome-settings --preview lock` (a few seconds of the
+lock-screen loop, then the unlock) play the current animation without opening the app. The
+**Alt+1** through **Alt+6** shortcuts switch between the six settings pages.
 
-Test the unlock path without typing a password:
+Test the lock-screen loop and the unlock without typing a password (press a key such as Shift
+after the first command to bring up the prompt):
 
 ```sh
 gdbus call --session --dest org.cinnamon.ScreenSaver --object-path /org/cinnamon/ScreenSaver \
@@ -106,9 +115,10 @@ gdbus call --session --dest org.cinnamon.ScreenSaver --object-path /org/cinnamon
 
 ## Touch Bar
 
-Five optional scenes follow the active settings page. **Esc** is first; **Unlock** and **Login**
-play previews; **Home**, **Time**, **Flow**, **Reveal** and **Text** jump to the five pages.
-They use the app's own Alt+1…Alt+5 shortcuts. To remove them, run
+Six optional scenes follow the active settings page. **Esc** is first; **Unlock** and **Login**
+play previews (on the Lock screen page, **Loop** previews the lock-screen loop); **Home**, **Lock**,
+**Time**, **Flow**, **Reveal** and **Text** jump to the six pages. They use the app's own
+Alt+1…Alt+6 shortcuts. To remove them, run
 `python3 tools/install-bar-scenes.py --remove`. No Touch Bar is needed to use the app.
 
 ## Troubleshooting
@@ -134,9 +144,21 @@ They use the app's own Alt+1…Alt+5 shortcuts. To remove them, run
   reveal edge.
 - **Login:** it patches `Main.layoutManager.startupAnimation.run` and calls the original animation's
   `_finished()` when the reveal starts.
-- **Unlock:** while the lock screen is up, a copy dimmed to the lock screen's level
-  (`LOCK_DIM = 0.3`) is parked at the top of `Main.uiGroup`. That puts it just under
-  `global.top_window_group`, where the lock window lives. The animation starts on the screensaver's
+- **Seamless loop:** every moving term in the shader runs at a whole multiple of one base
+  frequency (2π / 24 s), so the flow is exactly periodic. Speeding up just advances the same
+  clock faster, which is how the unlock continues the loop without a jump.
+- **Lock screen:** `cinnamon-screensaver` is a separate process, so the loop is drawn in the
+  compositor. A shader effect on the screensaver's window gets a second texture: a stage-sized
+  reference copy of the plain wallpaper. For each pixel it checks whether the lock window shows
+  just the wallpaper under a uniform dark shade. Those pixels are replaced by the animated
+  wallpaper at the same shade; anything else (text, icons, the entry, the avatar) is kept as it
+  is. The shader only reads the lock window and the wallpaper, never the desktop. Pixel positions
+  come from `gl_FragCoord`, because the lock window's own texture can be scaled and padded.
+  Whether the prompt is up is inferred from the idle time (the screensaver hides it after 30 s).
+- **Unlock:** while the lock screen is up, the overlay is parked at the top of `Main.uiGroup`,
+  just under `global.top_window_group`, where the lock window lives. When the lock window is
+  destroyed, the parked overlay takes over the loop in the same main-loop pass, before the next
+  frame, so nothing visibly changes. The fast continuation starts on the screensaver's
   `ActiveChanged(false)` D-Bus signal. The overlay is never placed *inside* `top_window_group`:
   Muffin restacks that group and would put it above the lock screen.
 
@@ -152,6 +174,10 @@ This is a small personal project shared as-is. It has only been used on the auth
   Slideshow and per-monitor wallpapers aren't handled specially: the current `picture-uri` is
   used on every monitor.
 - The greeting text is English-only. The date and time follow your locale.
+- The lock-screen loop assumes the stock screensaver look (wallpaper under a 70% black shade). If
+  a theme draws it differently, pixels simply fail the match and stay unchanged.
+- While the loop runs, unredirection of fullscreen windows is turned off so the compositor
+  draws the lock window; it is turned back on after unlock.
 - The animation is visual only. It doesn't add security to the lock screen and doesn't delay
   input after the reveal starts.
 

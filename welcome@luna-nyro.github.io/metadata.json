@@ -1,8 +1,11 @@
 {
     "uuid": "welcome@luna-nyro.github.io",
     "name": "Welcome",
-    "description": "Sign-in transition: the wallpaper's gradient swirls to life, greets you, then opens onto the desktop. Runs on login and when unlocking.",
+    "description": "Sign-in transition: the wallpaper's gradient flows behind the lock screen, then speeds up and opens onto the desktop. Runs on login and when unlocking.",
     "url": "https://github.com/Luna-Nyro/welcome",
-    "cinnamon-version": ["6.4", "6.6"],
-    "version": "1.1"
+    "cinnamon-version": [
+        "6.4",
+        "6.6"
+    ],
+    "version": "1.2"
 }

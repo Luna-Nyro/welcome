@@ -41,12 +41,20 @@ Notes:
   tools/dev.py -e 'global.__welcomeTransition.opts.freezeAt=null'
   ```
 - To test unlock without a password, see the `SetActive` commands in the README.
+- To check the lock-screen shader, set a debug view before locking, then reset it:
+  `tools/dev.py -e 'global.__welcomeTransition.opts.debugMask=1'` (1 = which pixels are replaced,
+  white; 2 = the reference wallpaper; 3 = difference between lock window and reference, ×20).
+  Use `0` to turn it off. A new value applies to the next lock.
+- After a GType is registered it stays registered for the shell's lifetime, which is why
+  `DualShaderEffect` is cached on `global` and picks a free type name when reloaded.
 - Errors show up in Looking Glass (`cinnamon-looking-glass`) › *Log* and in `~/.xsession-errors`.
 
 ## Guidelines
 
 - Keep the end state exact: every animation must finish on the plain, untouched wallpaper
   (`amp = 0`, `reveal = 1`, `fade = 1`).
+- Keep the flow periodic: any new time term in `FLOW_COMMON` must use a whole multiple of `W`,
+  or the lock-screen loop will jump once per cycle.
 - Never leave an overlay covering the desktop when something fails. Errors on the login path must
   fall back to Cinnamon's original startup animation.
 - Never put the overlay inside `global.top_window_group` (see README › How it works).
