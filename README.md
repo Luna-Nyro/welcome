@@ -19,6 +19,9 @@ unlock, that same motion carries on, faster and stronger, and opens onto the des
   wallpaper behind the lock screen flows in a loop that repeats without a visible seam. Only the
   wallpaper moves: the clock, prompt, avatar and media controls are left untouched. The loop fades
   out when the prompt hides and never runs while the screen is off.
+  While it moves, the wallpaper is dimmed less than the screensaver's usual 70% (50% by default,
+  adjustable from 30% to 70%), so the motion is easier to see; text edges are blended onto the
+  brighter background so they don't get a dark rim.
 - **Unlock transition.** Continues the lock-screen loop from the exact frame it was on, at the same
   70%-black dim that `cinnamon-screensaver` uses, then speeds up and surges into the reveal. There is
   no jump or flash at the hand-off.
@@ -31,7 +34,7 @@ unlock, that same motion carries on, faster and stronger, and opens onto the des
 - **Multi-monitor.** Each monitor gets its own copy of the wallpaper with the correct aspect ratio.
   The greeting appears on the primary monitor.
 - **Welcome Settings app** (GNOME / Libadwaita): six searchable pages with immediate saving:
-  General (login/unlock and previews), Lock screen (when the loop plays, loop speed and strength,
+  General (login/unlock and previews), Lock screen (when the loop plays, loop speed, strength and dimming,
   how much faster and stronger it gets on unlock), Timing (separate duration ranges and speed), Motion
   (swirl/waves/aurora/ripple, strength, colour, light, variation), Reveal
   (bloom/wipes/dissolve, softness and glow), and Greeting (message and date/time).
@@ -175,7 +178,8 @@ This is a small personal project shared as-is. It has only been used on the auth
   used on every monitor.
 - The greeting text is English-only. The date and time follow your locale.
 - The lock-screen loop assumes the stock screensaver look (wallpaper under a 70% black shade). If
-  a theme draws it differently, pixels simply fail the match and stay unchanged.
+  a theme draws it differently, pixels simply fail the match and stay unchanged. Lighter dimming
+  only applies while the loop is on; it fades back to 70% when the prompt hides.
 - While the loop runs, unredirection of fullscreen windows is turned off so the compositor
   draws the lock window; it is turned back on after unlock.
 - The animation is visual only. It doesn't add security to the lock screen and doesn't delay

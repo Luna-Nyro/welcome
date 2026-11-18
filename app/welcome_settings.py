@@ -200,6 +200,8 @@ class Window(Adw.PreferencesWindow):
         speed.connect('value-changed', loop_length)
         loop_length(speed)
         self.slider(looping, 'lock-intensity', 'Motion', 'How strongly the colours flow while locked', 0.1, 1.2, step=0.05)
+        self.slider(looping, 'lock-shade', 'Dimming', 'How dark the moving wallpaper is (the lock screen’s own is 70%)',
+                    30, 70, step=1, unit='%')
         onward = self.group(lock, 'Into the desktop',
                             'When your password is accepted, the same motion speeds up and opens onto the desktop.')
         self.slider(onward, 'unlock-boost', 'Speed-up', 'How much faster the loop runs once you unlock', 1, 5, unit='×')

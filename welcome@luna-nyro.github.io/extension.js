@@ -164,14 +164,14 @@ uniform sampler2D wall;
 ${FLOW_COMMON}
 uniform float stageW, stageH;       // stage size in pixels
 uniform float refX, refY, refW, refH; // where the reference texture sits on the stage (px)
-uniform float nmon, lockDim, debugMask;
+uniform float nmon, lockDim, outDim, debugMask;  // lockDim: screensaver's shade; outDim: ours
 uniform float m0x, m0y, m0w, m0h, m1x, m1y, m1w, m1h, m2x, m2y, m2w, m2h, m3x, m3y, m3w, m3h;
 
 bool inside(vec2 P, vec4 r) { return P.x >= r.x && P.y >= r.y && P.x < r.x + r.z && P.y < r.y + r.w; }
 
 void main() {
     vec4 S = texture2D(tex, cogl_tex_coord_in[0].st);
-    if (amp < 0.0005 && debugMask < 0.5) { cogl_color_out = S; return; }
+    if (amp < 0.0005 && abs(outDim - lockDim) < 0.001 && debugMask < 0.5) { cogl_color_out = S; return; }
 
     vec2 P = vec2(gl_FragCoord.x, stageH - gl_FragCoord.y);
     vec4 R = vec4(-1.0);
@@ -193,8 +193,18 @@ void main() {
 
     vec2 luv = (P - R.xy) / R.zw;
     vec4 wallRect = vec4((R.xy - refO) / refS, R.zw / refS);
-    vec3 A = clamp(flowColor(luv, R.z / R.w, wallRect), 0.0, 1.0) * lockDim * min(k, 1.0);
-    vec3 col = mix(S.rgb, A, w);
+    vec3 F = clamp(flowColor(luv, R.z / R.w, wallRect), 0.0, 1.0) * outDim;
+    vec3 col = mix(S.rgb, F * min(k, 1.0), w);
+
+    // Light UI (text, icons) is composited over the background with anti-aliased edges. Model
+    // such a pixel as  S = a*U + (1-a)*B  with U a light neutral colour, and swap B for the new
+    // background, so edges blend into the brighter, moving wallpaper instead of keeping a dark rim.
+    float lb = dot(B, vec3(0.3333)), ls = dot(S.rgb, vec3(0.3333));
+    float a = clamp((ls - lb) / max(1.0 - lb, 0.05), 0.0, 1.0);
+    vec3 U = (S.rgb - (1.0 - a) * B) / max(a, 0.05);
+    float neutral = (1.0 - smoothstep(0.10, 0.20, max(U.r, max(U.g, U.b)) - min(U.r, min(U.g, U.b))))
+                  * smoothstep(0.55, 0.75, dot(U, vec3(0.3333))) * step(0.02, a);
+    col = mix(col, clamp(S.rgb + (F - B) * (1.0 - a), 0.0, 1.0), neutral * (1.0 - w));
     if (debugMask > 0.5 && debugMask < 1.5) col = vec3(w);
     else if (debugMask > 1.5 && debugMask < 2.5) col = B;
     else if (debugMask > 2.5) col = vec3(abs(S.rgb - B) * 20.0);
@@ -310,6 +320,8 @@ const clamp01 = x => Math.max(0, Math.min(1, x));
 const seg = (t, a, b) => clamp01((t - a) / (b - a));
 const lerp = (a, b, x) => a + (b - a) * x;
 const now = () => GLib.get_monotonic_time() / 1e6;
+// 1 - the lock-screen shade the user picked (percent of black over the wallpaper).
+const _lockBrightness = opts => 1 - Math.max(0, Math.min(90, Number(opts.lockShade) || 0)) / 100;
 
 // ---------------------------------------------------------------------------------------------
 // Overlay
@@ -468,8 +480,9 @@ class Overlay {
     run(kind, onRevealStart, onDone, from = null) {
         this.kind = kind;
         this.removeReference();
-        // The lock screen draws the wallpaper under 70% black: unlock starts exactly there.
-        const fadeFrom = kind === 'login' ? 0 : LOCK_DIM;
+        // Unlock starts at the lock screen's brightness: the screensaver's 70% black, or the
+        // lighter shade the loop was showing.
+        const fadeFrom = kind === 'login' ? 0 : (from && from.dim != null ? from.dim : LOCK_DIM);
         if (this.opts.greeting) this._buildText(kind);
 
         let range = kind === 'login' ? [this.opts.loginMin, this.opts.loginMax] : [this.opts.unlockMin, this.opts.unlockMax];
@@ -572,7 +585,10 @@ class LockLoop {
 
     get rate() { return Math.max(0.05, this.opts.lockSpeed); }
     get amp() { return this.opts.lockIntensity * this.env; }
-    state() { return { t: this.t, rate: this.rate, amp: this.amp }; }
+    // Wallpaper brightness behind the lock screen: the screensaver's own 30%, lifted to ours
+    // while the loop is on.
+    get dim() { return lerp(LOCK_DIM, _lockBrightness(this.opts), this.env); }
+    state() { return { t: this.t, rate: this.rate, amp: this.amp, dim: this.dim }; }
 
     _wanted() {
         let mode = this.opts.lockLoop;
@@ -615,7 +631,7 @@ class LockLoop {
         fx.set_uniform_value('wall', 1);
         let mons = Main.layoutManager.monitors.slice(0, MAX_MONITORS);
         let u = { stageW: global.screen_width, stageH: global.screen_height, nmon: mons.length,
-                  lockDim: LOCK_DIM, debugMask: Number(this.opts.debugMask) || 0, t: this.t, amp: this.amp,
+                  lockDim: LOCK_DIM, outDim: this.dim, debugMask: Number(this.opts.debugMask) || 0, t: this.t, amp: this.amp,
                   ...this.overlay.referenceRect() };
         mons.forEach((m, i) => Object.assign(u, { [`m${i}x`]: m.x, [`m${i}y`]: m.y,
                                                   [`m${i}w`]: m.width, [`m${i}h`]: m.height }));
@@ -679,11 +695,12 @@ class LockLoop {
             this.fx.set_enabled(this.env > 0.0005 || !!this.opts.debugMask);
             this.fx.set_uniform_value('t', _float(this.t));
             this.fx.set_uniform_value('amp', _float(this.amp));
+            this.fx.set_uniform_value('outDim', _float(this.dim));
             let r = this.overlay.referenceRect();
             for (let k in r) this.fx.set_uniform_value(k, _float(r[k]));
         }
         if (this.handedOff && this.overlay.actor)
-            this.overlay.setFlow({ t: this.t, amp: this.amp, reveal: 0, fade: LOCK_DIM });
+            this.overlay.setFlow({ t: this.t, amp: this.amp, reveal: 0, fade: this.dim });
     }
 
     stop() {
@@ -708,7 +725,7 @@ class Welcome {
             motionPattern: 'swirl', revealPattern: 'bloom', loginMin: 2.7, loginMax: 3.1,
             unlockMin: 1.9, unlockMax: 2.2, hueStrength: 1, sweepStrength: 1,
             edgeSoftness: 1, glowStrength: 1,
-            lockLoop: 'prompt', lockSpeed: 0.6, lockIntensity: 0.55,
+            lockLoop: 'prompt', lockSpeed: 0.6, lockIntensity: 0.55, lockShade: 50,
             unlockBoost: 2.5, unlockSurge: 1.3, debugMask: false };
         this.overlay = null;
         this.parked = null;      // overlay parked under the screensaver window
@@ -732,7 +749,7 @@ class Welcome {
                 ['hue-strength','hueStrength'], ['sweep-strength','sweepStrength'],
                 ['edge-softness','edgeSoftness'], ['glow-strength','glowStrength'],
                 ['lock-loop', 'lockLoop'], ['lock-speed', 'lockSpeed'],
-                ['lock-intensity', 'lockIntensity'], ['unlock-boost', 'unlockBoost'],
+                ['lock-intensity', 'lockIntensity'], ['lock-shade', 'lockShade'], ['unlock-boost', 'unlockBoost'],
                 ['unlock-surge', 'unlockSurge']])
                 this.settings.bind(key, prop);
             this.opts.preview = () => this.preview('unlock');
@@ -903,11 +920,12 @@ class Welcome {
             env = Math.min(1, env + dt * 1.2);
             t += dt * Math.max(0.05, this.opts.lockSpeed);
             let amp = this.opts.lockIntensity * env;
+            let dim = lerp(LOCK_DIM, _lockBrightness(this.opts), env);
             ov.raise();
-            if (n - started < 5) { ov.setFlow({ t, amp, reveal: 0, fade: LOCK_DIM }); return GLib.SOURCE_CONTINUE; }
+            if (n - started < 5) { ov.setFlow({ t, amp, reveal: 0, fade: dim }); return GLib.SOURCE_CONTINUE; }
             this.previewLoopId = 0;
             ov.run('unlock', null, () => { if (this.overlay === ov) this.overlay = null; },
-                   { t, rate: Math.max(0.05, this.opts.lockSpeed), amp });
+                   { t, rate: Math.max(0.05, this.opts.lockSpeed), amp, dim });
             return GLib.SOURCE_REMOVE;
         });
     }
