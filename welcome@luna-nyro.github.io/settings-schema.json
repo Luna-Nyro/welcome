@@ -115,6 +115,59 @@
         "step": 0.05,
         "description": "Unlock: extra motion into the desktop"
     },
+    "desktop": {
+        "type": "header",
+        "description": "Desktop"
+    },
+    "desktop-loop": {
+        "type": "switch",
+        "default": false,
+        "description": "Keep the wallpaper moving on the desktop",
+        "tooltip": "Only while enough of the desktop is visible"
+    },
+    "desktop-speed": {
+        "type": "scale",
+        "default": 0.35,
+        "min": 0.1,
+        "max": 1.5,
+        "step": 0.05,
+        "description": "Desktop: loop speed",
+        "dependency": "desktop-loop"
+    },
+    "desktop-intensity": {
+        "type": "scale",
+        "default": 0.35,
+        "min": 0.1,
+        "max": 1.0,
+        "step": 0.05,
+        "description": "Desktop: motion strength",
+        "dependency": "desktop-loop"
+    },
+    "desktop-min-visible": {
+        "type": "scale",
+        "default": 15,
+        "min": 1,
+        "max": 60,
+        "step": 1,
+        "description": "Desktop: play when at least this much is uncovered (%)",
+        "dependency": "desktop-loop"
+    },
+    "desktop-fps": {
+        "type": "combobox",
+        "default": 30,
+        "description": "Desktop: frame rate",
+        "options": {
+            "30 fps (saves power)": 30,
+            "60 fps (smoother)": 60
+        },
+        "dependency": "desktop-loop"
+    },
+    "desktop-battery": {
+        "type": "switch",
+        "default": false,
+        "description": "Desktop: pause on battery power",
+        "dependency": "desktop-loop"
+    },
     "motion": {
         "type": "header",
         "description": "Motion"

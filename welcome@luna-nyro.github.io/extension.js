@@ -211,6 +211,32 @@ void main() {
     cogl_color_out = vec4(col, S.a);
 }`;
 
+// Desktop: a shader on Cinnamon's background actor (the wallpaper layer under nemo-desktop's
+// transparent icon window and all other windows), so only the wallpaper itself moves.
+const FRAG_DESKTOP = `
+#define FLOW_SRC tex
+${FLOW_COMMON}
+uniform float stageH, texX, texY, texW, texH, nmon, mixAmt;
+uniform float m0x, m0y, m0w, m0h, m1x, m1y, m1w, m1h, m2x, m2y, m2w, m2h, m3x, m3y, m3w, m3h;
+
+bool inside(vec2 P, vec4 r) { return P.x >= r.x && P.y >= r.y && P.x < r.x + r.z && P.y < r.y + r.w; }
+
+void main() {
+    vec4 S = texture2D(tex, cogl_tex_coord_in[0].st);
+    vec2 P = vec2(gl_FragCoord.x, stageH - gl_FragCoord.y);
+    vec4 R = vec4(-1.0);
+    vec4 r0 = vec4(m0x, m0y, m0w, m0h), r1 = vec4(m1x, m1y, m1w, m1h);
+    vec4 r2 = vec4(m2x, m2y, m2w, m2h), r3 = vec4(m3x, m3y, m3w, m3h);
+    if (nmon > 0.5 && inside(P, r0)) R = r0;
+    else if (nmon > 1.5 && inside(P, r1)) R = r1;
+    else if (nmon > 2.5 && inside(P, r2)) R = r2;
+    else if (nmon > 3.5 && inside(P, r3)) R = r3;
+    if (R.z < 0.0 || mixAmt < 0.001) { cogl_color_out = S; return; }
+    vec2 texO = vec2(texX, texY), texS = vec2(texW, texH);
+    vec3 F = clamp(flowColor((P - R.xy) / R.zw, R.z / R.w, vec4((R.xy - texO) / texS, R.zw / texS)), 0.0, 1.0);
+    cogl_color_out = vec4(mix(S.rgb, F, mixAmt) * S.a, S.a);
+}`;
+
 const PASS = 'uniform sampler2D tex; void main() { cogl_color_out = texture2D(tex, cogl_tex_coord_in[0].st); }';
 
 function _float(v) {
@@ -308,6 +334,15 @@ function _variation(randomness) {
     return v;
 }
 
+function _shaderOptions(opts) {
+    return {
+        pattern: Math.max(0, ['swirl', 'waves', 'aurora', 'ripple'].indexOf(opts.motionPattern)),
+        revealPattern: Math.max(0, ['bloom', 'horizontal', 'vertical', 'dissolve'].indexOf(opts.revealPattern)),
+        hueStrength: opts.hueStrength, sweepStrength: opts.sweepStrength,
+        edgeSoftness: opts.edgeSoftness, glowStrength: opts.glowStrength,
+    };
+}
+
 // Uniforms shared by the flow function in both shaders.
 const FLOW_KEYS = ['ph1', 'ph2', 'ph3', 'ph4', 'fq', 'frot', 'swirl', 'hueAmt', 'sweepA'];
 
@@ -327,16 +362,12 @@ const _lockBrightness = opts => 1 - Math.max(0, Math.min(90, Number(opts.lockSha
 // Overlay
 // ---------------------------------------------------------------------------------------------
 class Overlay {
-    constructor(opts) {
+    // `vary`: reuse a running loop's variation so the motion carries straight on.
+    constructor(opts, vary = null) {
         this.opts = opts;
         this.kind = null;
-        this.vary = _variation(opts.randomness);
-        this.shaderOptions = {
-            pattern: Math.max(0, ['swirl', 'waves', 'aurora', 'ripple'].indexOf(opts.motionPattern)),
-            revealPattern: Math.max(0, ['bloom', 'horizontal', 'vertical', 'dissolve'].indexOf(opts.revealPattern)),
-            hueStrength: opts.hueStrength, sweepStrength: opts.sweepStrength,
-            edgeSoftness: opts.edgeSoftness, glowStrength: opts.glowStrength,
-        };
+        this.vary = vary || _variation(opts.randomness);
+        this.shaderOptions = _shaderOptions(opts);
         this.timeline = null;
         this.effects = [];
         this.refActor = null;
@@ -477,7 +508,9 @@ class Overlay {
 
     // kind: 'login' | 'unlock'. `from` continues a running loop: { t, rate, amp }.
     // onRevealStart fires when the desktop starts opening.
-    run(kind, onRevealStart, onDone, from = null) {
+    // `sink`: the desktop loop. The run drives its clock so the wallpaper the reveal uncovers is
+    // already moving in step, then hands the clock over at the end.
+    run(kind, onRevealStart, onDone, from = null, sink = null) {
         this.kind = kind;
         this.removeReference();
         // Unlock starts at the lock screen's brightness: the screensaver's 70% black, or the
@@ -504,6 +537,11 @@ class Overlay {
         let flowT = start.t;
         let lastT = 0;
         this.prime(fadeFrom, start.t, start.amp);
+        // With the desktop loop on, the flow settles to the desktop's strength instead of zero.
+        let endAmp = sink && sink.willPlay() ? sink.targetAmp() : 0;
+        if (sink) sink.adopt(this.vary, this.shaderOptions);
+        this._sink = sink;
+        this._sinkState = { t: flowT, rate: start.rate, amp: start.amp };
 
         let revealStarted = false;
         let tick = (ms) => {
@@ -517,10 +555,11 @@ class Overlay {
             // Flow strength: surges from where it was, holds, then calms to exactly zero.
             let rise = ease.outCubic(seg(t, 0, kind === 'login' ? 0.6 / speed : 0.4 / speed));
             let calm = 1 - ease.inOutSine(seg(t, P.reveal[0] - 0.4 / speed, P.total));
-            let amp = lerp(start.amp, this.opts.intensity * surge, rise) * calm;
+            let amp = lerp(endAmp, lerp(start.amp, this.opts.intensity * surge, rise), calm);
             let reveal = ease.inOutCubic(seg(t, P.reveal[0], P.reveal[1]));
             let fade = fadeFrom + (1 - fadeFrom) * ease.outCubic(seg(t, P.fadeIn[0], P.fadeIn[1]));
             this.setFlow({ t: flowT, amp, reveal, fade });
+            if (this._sink) { this._sinkState = { t: flowT, rate, amp }; this._sink.drive(flowT, amp); }
 
             if (this.textBox) {
                 let tin = ease.outCubic(seg(t, P.textIn[0], P.textIn[1]));
@@ -555,6 +594,7 @@ class Overlay {
 
     destroy() {
         if (this.timeline) { this.timeline.stop(); this.timeline = null; }
+        if (this._sink) { this._sink.release(this._sinkState); this._sink = null; }
         this.refActor = null;
         this.refEffect = null;
         if (this.actor) { this.actor.destroy(); this.actor = null; }
@@ -568,10 +608,11 @@ class Overlay {
 // Owns the flow clock while the screen is locked. Drives the shader on the screensaver window, and
 // (after the lock window has gone) the parked overlay, until the unlock run takes over the clock.
 class LockLoop {
-    constructor(opts, overlay) {
+    constructor(opts, overlay, startT = null) {
         this.opts = opts;
         this.overlay = overlay;
-        this.t = Math.random() * LOOP_SECONDS;   // start somewhere new in the loop
+        // Carry on from the desktop loop if it was running, otherwise start somewhere new.
+        this.t = startT != null ? startT : Math.random() * LOOP_SECONDS;
         this.env = 0;              // 0..1 fade of the loop's strength (prompt shown or not)
         this.actor = null;
         this.fx = null;
@@ -715,6 +756,218 @@ class LockLoop {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Desktop loop
+// ---------------------------------------------------------------------------------------------
+// Keeps the wallpaper flowing after the transition, but only while enough of the desktop is
+// actually visible. When windows cover it (or the screen is locked, Expo is open, or on battery
+// if chosen) it eases to the still wallpaper and stops drawing entirely.
+class DesktopLoop {
+    constructor(opts) {
+        this.opts = opts;
+        this.vary = _variation(opts.randomness);
+        this.shaderOptions = _shaderOptions(opts);
+        this.t = Math.random() * LOOP_SECONDS;
+        this.rate = Math.max(0.05, opts.desktopSpeed);
+        this.env = 0;               // 0..1 fade (visible or not)
+        this.external = false;      // a transition is driving the clock
+        this.locked = false;
+        this.visible = true;
+        this.onBattery = false;
+        this.fx = null;
+        this.timeline = null;
+        this.pollId = 0;
+        this.last = now();
+        this.lastApply = 0;
+        this.signals = [];
+    }
+
+    start() {
+        this._attach();
+        this.signals.push([Main.layoutManager, Main.layoutManager.connect('monitors-changed', () => this._attach())]);
+        this._watchPower();
+        this._checkVisible();
+        this.pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+            this._checkVisible();
+            if (this._wanted() && !this.timeline) this._startClock();
+            return GLib.SOURCE_CONTINUE;
+        });
+        if (this._wanted()) this._startClock();
+    }
+
+    stop() {
+        if (this.pollId) { GLib.source_remove(this.pollId); this.pollId = 0; }
+        if (this.timeline) { this.timeline.stop(); this.timeline = null; }
+        for (let [obj, id] of this.signals) { try { obj.disconnect(id); } catch (e) {} }
+        this.signals = [];
+        this._detach();
+    }
+
+    targetAmp() { return Math.max(0, this.opts.desktopIntensity); }
+    willPlay() { this._checkVisible(); return this._wanted(); }
+
+    _wanted() {
+        return !!this.opts.desktopLoop && !this.locked && this.visible &&
+               !(this.onBattery && this.opts.desktopBattery) &&
+               !Main.expo.visible && !Main.overview.visible && Main.animations_enabled !== false;
+    }
+
+    _attach() {
+        this._detach();
+        let bg = global.background_actor;
+        if (!bg) return;
+        let fx = new Clutter.ShaderEffect({ shader_type: Clutter.ShaderType.FRAGMENT_SHADER });
+        fx.set_shader_source(FRAG_DESKTOP);
+        fx.set_uniform_value('tex', 0);
+        let mons = Main.layoutManager.monitors.slice(0, MAX_MONITORS);
+        let u = { stageH: global.screen_height, nmon: mons.length, t: this.t, amp: 0, mixAmt: 0,
+                  texX: 0, texY: 0, texW: global.screen_width, texH: global.screen_height };
+        mons.forEach((m, i) => Object.assign(u, { [`m${i}x`]: m.x, [`m${i}y`]: m.y,
+                                                  [`m${i}w`]: m.width, [`m${i}h`]: m.height }));
+        for (let k of FLOW_KEYS) u[k] = this.vary[k];
+        for (let k of ['pattern', 'hueStrength', 'sweepStrength']) u[k] = this.shaderOptions[k];
+        for (let k in u) fx.set_uniform_value(k, _float(u[k]));
+        fx.set_enabled(false);
+        bg.add_effect_with_name('welcome-desktop', fx);
+        this.fx = fx;
+        this.bg = bg;
+    }
+
+    _detach() {
+        if (this.fx && this.bg) { try { this.bg.remove_effect(this.fx); } catch (e) {} }
+        this.fx = null;
+        this.bg = null;
+    }
+
+    _watchPower() {
+        try {
+            let proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SYSTEM, Gio.DBusProxyFlags.NONE, null,
+                'org.freedesktop.UPower', '/org/freedesktop/UPower', 'org.freedesktop.UPower', null);
+            let read = () => {
+                let v = proxy.get_cached_property('OnBattery');
+                this.onBattery = v ? v.unpack() : false;
+            };
+            read();
+            this.signals.push([proxy, proxy.connect('g-properties-changed', read)]);
+            this.power = proxy;
+        } catch (e) {
+            this.onBattery = false;
+        }
+    }
+
+    // Visible = some monitor shows at least `desktopMinVisible`% of its wallpaper, judged on a
+    // coarse grid against the frames of normal windows on the current workspace.
+    _checkVisible() {
+        let ws = global.workspace_manager.get_active_workspace();
+        const T = Meta.WindowType;
+        const covering = [T.NORMAL, T.DIALOG, T.MODAL_DIALOG, T.UTILITY, T.SPLASHSCREEN, T.TOOLBAR, T.MENU];
+        let rects = [];
+        for (let a of global.get_window_actors()) {
+            let w = a.meta_window;
+            if (!w || w.minimized || !a.visible || !covering.includes(w.get_window_type())) continue;
+            if (!w.showing_on_its_workspace() || !(w.is_on_all_workspaces() || w.get_workspace() === ws)) continue;
+            rects.push(w.get_frame_rect());
+        }
+        let need = Math.max(0, Math.min(100, Number(this.opts.desktopMinVisible) || 0)) / 100;
+        const NX = 32, NY = 20;
+        this.visible = Main.layoutManager.monitors.some(m => {
+            let free = 0;
+            for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) {
+                let x = m.x + (i + 0.5) * m.width / NX, y = m.y + (j + 0.5) * m.height / NY;
+                if (!rects.some(r => x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height)) free++;
+            }
+            return free / (NX * NY) >= Math.max(need, 0.001);
+        });
+    }
+
+    setLocked(locked) {
+        this.locked = locked;
+        if (locked) {
+            // Hidden under the lock screen anyway: stop at once, keep the clock.
+            this.env = 0;
+            this._apply(true);
+            if (this.timeline) { this.timeline.stop(); this.timeline = null; }
+        } else if (this._wanted()) {
+            this._startClock();
+        }
+    }
+
+    adopt(vary, shaderOptions) {
+        this.vary = vary;
+        this.shaderOptions = shaderOptions;
+        if (!this.fx) return;
+        for (let k of FLOW_KEYS) this.fx.set_uniform_value(k, _float(vary[k]));
+        for (let k of ['pattern', 'hueStrength', 'sweepStrength']) this.fx.set_uniform_value(k, _float(shaderOptions[k]));
+    }
+
+    // A transition owns the clock: mirror it exactly.
+    drive(t, amp) {
+        this.external = true;
+        this.t = t;
+        if (!this.fx) return;
+        this.fx.set_enabled(!!this.opts.desktopLoop);
+        this.fx.set_uniform_value('t', _float(t));
+        this.fx.set_uniform_value('amp', _float(amp));
+        this.fx.set_uniform_value('mixAmt', _float(1));
+    }
+
+    // The transition ended: carry on from its clock, rate and strength.
+    release(state) {
+        if (!this.external) return;
+        this.external = false;
+        this.t = state.t;
+        this.rate = state.rate;
+        let target = this.targetAmp();
+        this.env = target > 0 ? Math.min(1, state.amp / target) : 0;
+        this.last = now();
+        this._startClock();
+    }
+
+    _startClock() {
+        if (this.timeline || this.locked) return;
+        this.last = now();
+        this.timeline = new Clutter.Timeline({ duration: 1000, repeat_count: -1 });
+        this.timeline.connect('new-frame', () => this._tick());
+        this.timeline.start();
+    }
+
+    _tick() {
+        if (this.external) return;
+        let n = now(), dt = Math.min(0.1, n - this.last);
+        this.last = n;
+        let target = this._wanted() ? 1 : 0;
+        this.env = target > this.env ? Math.min(1, this.env + dt * 0.8) : Math.max(0, this.env - dt * 0.9);
+        // A transition hands over at its own (fast) pace; settle to the calm desktop pace.
+        let pace = Math.max(0.05, this.opts.desktopSpeed);
+        this.rate += (pace - this.rate) * Math.min(1, dt * 1.2);
+        this.t += dt * this.rate;
+        if (this.t > LOOP_SECONDS * 1000) this.t -= LOOP_SECONDS * 1000;
+        let fps = Number(this.opts.desktopFps) >= 60 ? 60 : 30;
+        if (n - this.lastApply >= 1 / fps - 0.004 || this.env === 0) {
+            this.lastApply = n;
+            this._apply();
+        }
+        if (this.env <= 0 && target === 0 && this.timeline) {
+            this.timeline.stop();
+            this.timeline = null;
+        }
+    }
+
+    _apply(force = false) {
+        if (!this.fx) return;
+        let on = this.env > 0.0005;
+        this.fx.set_enabled(on);
+        if (!on && !force) return;
+        this.fx.set_uniform_value('t', _float(this.t));
+        this.fx.set_uniform_value('amp', _float(this.targetAmp() * this.env));
+        this.fx.set_uniform_value('mixAmt', _float(Math.min(1, this.env * 1.5)));
+        let [ok, r] = this.fx.get_target_rect();
+        if (ok && r.get_width() > 0)
+            for (let [k, v] of [['texX', r.get_x()], ['texY', r.get_y()], ['texW', r.get_width()], ['texH', r.get_height()]])
+                this.fx.set_uniform_value(k, _float(v));
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Controller
 // ---------------------------------------------------------------------------------------------
 class Welcome {
@@ -726,7 +979,10 @@ class Welcome {
             unlockMin: 1.9, unlockMax: 2.2, hueStrength: 1, sweepStrength: 1,
             edgeSoftness: 1, glowStrength: 1,
             lockLoop: 'prompt', lockSpeed: 0.6, lockIntensity: 0.55, lockShade: 50,
-            unlockBoost: 2.5, unlockSurge: 1.3, debugMask: false };
+            unlockBoost: 2.5, unlockSurge: 1.3, debugMask: false,
+            desktopLoop: false, desktopSpeed: 0.35, desktopIntensity: 0.35, desktopMinVisible: 15,
+            desktopFps: 30, desktopBattery: false };
+        this.desktop = null;     // desktop loop, when enabled
         this.overlay = null;
         this.parked = null;      // overlay parked under the screensaver window
         this.loop = null;        // lock-screen loop driving the parked overlay's clock
@@ -750,8 +1006,11 @@ class Welcome {
                 ['edge-softness','edgeSoftness'], ['glow-strength','glowStrength'],
                 ['lock-loop', 'lockLoop'], ['lock-speed', 'lockSpeed'],
                 ['lock-intensity', 'lockIntensity'], ['lock-shade', 'lockShade'], ['unlock-boost', 'unlockBoost'],
-                ['unlock-surge', 'unlockSurge']])
+                ['unlock-surge', 'unlockSurge'], ['desktop-speed', 'desktopSpeed'],
+                ['desktop-intensity', 'desktopIntensity'], ['desktop-min-visible', 'desktopMinVisible'],
+                ['desktop-fps', 'desktopFps'], ['desktop-battery', 'desktopBattery']])
                 this.settings.bind(key, prop);
+            this.settings.bind('desktop-loop', 'desktopLoop', () => this._syncDesktop());
             this.opts.preview = () => this.preview('unlock');
             this.opts.previewLogin = () => this.preview('login');
             this.opts.previewLock = () => this.preview('lock');
@@ -762,8 +1021,19 @@ class Welcome {
 
     enable() {
         this._loadSettings();
+        this._syncDesktop();
         this._hookStartup();
         this._watchScreensaver();
+    }
+
+    _syncDesktop() {
+        if (this.opts.desktopLoop && !this.desktop) {
+            this.desktop = new DesktopLoop(this.opts);
+            this.desktop.start();
+        } else if (!this.opts.desktopLoop && this.desktop) {
+            this.desktop.stop();
+            this.desktop = null;
+        }
     }
 
     disable() {
@@ -775,6 +1045,7 @@ class Welcome {
         this.proxy = null;
         this._unpark();
         if (this.overlay) { this.overlay.destroy(); this.overlay = null; }
+        if (this.desktop) { this.desktop.stop(); this.desktop = null; }
         if (this.previewLoopId) { GLib.source_remove(this.previewLoopId); this.previewLoopId = 0; }
         if (this.settings) { try { this.settings.finalize(); } catch (e) {} this.settings = null; }
     }
@@ -800,7 +1071,7 @@ class Welcome {
                     // Desktop starts opening: drop Cinnamon's black shroud (it's under us) and
                     // hand the session back (cursor, input, struts) while we finish the reveal.
                     this._finished();
-                }, () => { self.overlay = null; });
+                }, () => { self.overlay = null; }, null, self.desktop);
             } catch (e) {
                 global.logError(`${UUID}: login animation failed: ${e}`);
                 if (self.overlay) { self.overlay.destroy(); self.overlay = null; }
@@ -819,7 +1090,11 @@ class Welcome {
 
         this.proxy = new ScreenSaver.ScreenSaverProxy();
         this.proxyId = this.proxy.connectSignal('ActiveChanged', (proxy, sender, [active]) => {
-            if (active) { this._parkExisting(); return; }
+            if (active) {
+                if (this.desktop) this.desktop.setLocked(true);
+                this._parkExisting();
+                return;
+            }
             this._onUnlocked();
         });
         // Enabled while already locked (e.g. the extension was reloaded).
@@ -839,13 +1114,15 @@ class Welcome {
         if (!this.opts.onUnlock || !this._animationsOk()) return;
         let actor = win.get_compositor_private();
         if (!actor || actor === this.ssActor) return;
+        let desk = this.desktop;
+        if (desk) desk.setLocked(true);
         if (!this.parked) {
-            this.parked = new Overlay(this.opts);
+            this.parked = new Overlay(this.opts, desk ? desk.vary : null);
             this.parked.prime(LOCK_DIM);
         }
         this.parked.place();
         this.ssActor = actor;
-        if (!this.loop) this.loop = new LockLoop(this.opts, this.parked);
+        if (!this.loop) this.loop = new LockLoop(this.opts, this.parked, desk ? desk.t : null);
         this.loop.attach(actor);
         actor.connect('destroy', () => {
             if (this.ssActor !== actor) return;
@@ -892,12 +1169,14 @@ class Welcome {
         this.ssActor = null;
         let from = loop ? loop.state() : null;
         if (loop) loop.stop();
-        if (!ov) return;
-        if (!this.opts.onUnlock || !this._animationsOk()) { ov.destroy(); return; }
+        let desk = this.desktop;
+        if (!ov) { if (desk) desk.setLocked(false); return; }
+        if (!this.opts.onUnlock || !this._animationsOk()) { ov.destroy(); if (desk) desk.setLocked(false); return; }
         if (this.overlay) this.overlay.destroy();
         this.overlay = ov;
         ov.place();
-        ov.run('unlock', null, () => { if (this.overlay === ov) this.overlay = null; }, from);
+        if (desk) desk.locked = false;   // the run drives it, then hands the clock over
+        ov.run('unlock', null, () => { if (this.overlay === ov) this.overlay = null; }, from, desk);
     }
 
     // kind: 'login' | 'unlock' | 'lock' (a few seconds of the lock-screen loop, then the unlock).
@@ -908,7 +1187,7 @@ class Welcome {
         this.overlay = ov;
         ov.place();
         if (kind !== 'lock') {
-            ov.run(kind, null, () => { if (this.overlay === ov) this.overlay = null; });
+            ov.run(kind, null, () => { if (this.overlay === ov) this.overlay = null; }, null, this.desktop);
             return;
         }
         let t = Math.random() * LOOP_SECONDS, env = 0, last = now(), started = last;
@@ -925,7 +1204,7 @@ class Welcome {
             if (n - started < 5) { ov.setFlow({ t, amp, reveal: 0, fade: dim }); return GLib.SOURCE_CONTINUE; }
             this.previewLoopId = 0;
             ov.run('unlock', null, () => { if (this.overlay === ov) this.overlay = null; },
-                   { t, rate: Math.max(0.05, this.opts.lockSpeed), amp, dim });
+                   { t, rate: Math.max(0.05, this.opts.lockSpeed), amp, dim }, this.desktop);
             return GLib.SOURCE_REMOVE;
         });
     }

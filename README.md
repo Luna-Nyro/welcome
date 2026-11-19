@@ -7,7 +7,8 @@ glowing, organic edge while the colours settle back onto the still wallpaper.
 
 On login it takes the place of Cinnamon's black startup fade. While the screen is locked and the
 password prompt is up, the wallpaper behind the lock screen flows in a calm, seamless loop. When you
-unlock, that same motion carries on, faster and stronger, and opens onto the desktop.
+unlock, that same motion carries on, faster and stronger, and opens onto the desktop. If you like,
+it can then keep flowing gently on the desktop, but only while you can actually see it.
 
 > No screenshots or recordings are included yet. Use **Preview** in the settings (see below) to see it.
 
@@ -25,6 +26,11 @@ unlock, that same motion carries on, faster and stronger, and opens onto the des
 - **Unlock transition.** Continues the lock-screen loop from the exact frame it was on, at the same
   70%-black dim that `cinnamon-screensaver` uses, then speeds up and surges into the reveal. There is
   no jump or flash at the hand-off.
+- **Desktop loop (optional).** After the transition the wallpaper keeps moving calmly behind
+  your icons and windows. It plays only while enough of the desktop is uncovered (15% of a screen by
+  default). When windows cover it, the screen locks or Expo opens, it eases to the still wallpaper
+  and stops drawing. It runs at 30 fps by default and can pause on battery. The same motion runs
+  through the desktop, the lock screen and the unlock, without restarting.
 - **Greeting.** "Good morning/afternoon/evening/night, *Name*" on login, "Welcome back, *Name*" on
   unlock, plus the date and time. The name is the first word of your account's real name, or your
   login name if the real name isn't set.
@@ -33,9 +39,10 @@ unlock, that same motion carries on, faster and stronger, and opens onto the des
   the rim tint and the duration within your chosen range. Every run ends on the plain wallpaper.
 - **Multi-monitor.** Each monitor gets its own copy of the wallpaper with the correct aspect ratio.
   The greeting appears on the primary monitor.
-- **Welcome Settings app** (GNOME / Libadwaita): six searchable pages with immediate saving:
+- **Welcome Settings app** (GNOME / Libadwaita): seven searchable pages with immediate saving:
   General (login/unlock and previews), Lock screen (when the loop plays, loop speed, strength and dimming,
-  how much faster and stronger it gets on unlock), Timing (separate duration ranges and speed), Motion
+  how much faster and stronger it gets on unlock), Desktop (moving wallpaper on/off, speed, strength,
+  how much desktop must be visible, frame rate, pause on battery), Timing (separate duration ranges and speed), Motion
   (swirl/waves/aurora/ripple, strength, colour, light, variation), Reveal
   (bloom/wipes/dissolve, softness and glow), and Greeting (message and date/time).
 - **Optional Touch Bar scenes** for each settings page: Escape, login/unlock previews and page
@@ -83,7 +90,7 @@ You can also use the extension's basic settings in **System Settings › Extensi
 For scripts and Touch Bar keys, `./welcome-settings --preview unlock`,
 `./welcome-settings --preview login` and `./welcome-settings --preview lock` (a few seconds of the
 lock-screen loop, then the unlock) play the current animation without opening the app. The
-**Alt+1** through **Alt+6** shortcuts switch between the six settings pages.
+**Alt+1** through **Alt+7** shortcuts switch between the seven settings pages.
 
 Test the lock-screen loop and the unlock without typing a password (press a key such as Shift
 after the first command to bring up the prompt):
@@ -118,10 +125,10 @@ gdbus call --session --dest org.cinnamon.ScreenSaver --object-path /org/cinnamon
 
 ## Touch Bar
 
-Six optional scenes follow the active settings page. **Esc** is first; **Unlock** and **Login**
+Seven optional scenes follow the active settings page. **Esc** is first; **Unlock** and **Login**
 play previews (on the Lock screen page, **Loop** previews the lock-screen loop); **Home**, **Lock**,
-**Time**, **Flow**, **Reveal** and **Text** jump to the six pages. They use the app's own
-Alt+1…Alt+6 shortcuts. To remove them, run
+**Desk**, **Time**, **Flow**, **Reveal** and **Text** jump to the seven pages. They use the app's own
+Alt+1…Alt+7 shortcuts. To remove them, run
 `python3 tools/install-bar-scenes.py --remove`. No Touch Bar is needed to use the app.
 
 ## Troubleshooting
@@ -158,6 +165,12 @@ Alt+1…Alt+6 shortcuts. To remove them, run
   is. The shader only reads the lock window and the wallpaper, never the desktop. Pixel positions
   come from `gl_FragCoord`, because the lock window's own texture can be scaled and padded.
   Whether the prompt is up is inferred from the idle time (the screensaver hides it after 30 s).
+- **Desktop:** a shader effect on Cinnamon's background actor, the wallpaper layer under
+  nemo-desktop's transparent icon window and every other window, so only the wallpaper moves.
+  Every 0.5 s a coarse grid is checked against the frames of normal windows on the current
+  workspace to decide whether enough of the desktop is visible. Transitions drive this effect's
+  clock while they run, so the wallpaper uncovered by the reveal is already moving in step, then
+  hand the clock over. Muffin skips painting the background when windows fully cover it.
 - **Unlock:** while the lock screen is up, the overlay is parked at the top of `Main.uiGroup`,
   just under `global.top_window_group`, where the lock window lives. When the lock window is
   destroyed, the parked overlay takes over the loop in the same main-loop pass, before the next
@@ -182,6 +195,9 @@ This is a small personal project shared as-is. It has only been used on the auth
   only applies while the loop is on; it fades back to 70% when the prompt hides.
 - While the loop runs, unredirection of fullscreen windows is turned off so the compositor
   draws the lock window; it is turned back on after unlock.
+- The desktop loop costs GPU power while it is visible: a full-screen shader at 30 fps (60 if
+  chosen). It is off by default; use the frame rate, "Visible desktop needed" and "Pause on
+  battery" settings to limit it.
 - The animation is visual only. It doesn't add security to the lock screen and doesn't delay
   input after the reveal starts.
 

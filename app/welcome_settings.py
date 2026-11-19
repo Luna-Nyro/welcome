@@ -213,6 +213,34 @@ class Window(Adw.PreferencesWindow):
             group.set_sensitive(bool(self.values['on-unlock']))
         self.lock_groups = (looping, onward)
 
+        desktop = self.page('Desktop', 'user-desktop-symbolic',
+                            'Let the motion carry on after the transition, but only where you can see it.')
+        keep = self.group(desktop, 'Moving wallpaper',
+                          'The wallpaper keeps flowing gently after you sign in. Icons and windows stay still.')
+        desk_switch = self.switch(keep, 'desktop-loop', 'Keep the wallpaper moving',
+                                  'Continue the animation on the desktop')
+        desk_switch.connect('notify::active', lambda r, _: [g.set_sensitive(r.get_active())
+                                                            for g in getattr(self, '_desk_groups', ())])
+        details = self.group(desktop, 'Look')
+        speed = self.slider(details, 'desktop-speed', 'Loop speed', '', 0.1, 1.5, step=0.05, unit='×')
+        def desk_loop_length(adj):
+            adj.row.set_subtitle(f'One seamless loop every {24 / max(adj.get_value(), 0.05):.0f} s')
+        speed.connect('value-changed', desk_loop_length)
+        desk_loop_length(speed)
+        self.slider(details, 'desktop-intensity', 'Motion', 'How strongly the colours flow on the desktop', 0.1, 1, step=0.05)
+        when = self.group(desktop, 'When it plays',
+                          'It eases to the still wallpaper and stops drawing whenever it would not be seen: '
+                          'when windows cover the desktop, the screen is locked or Expo is open.')
+        self.slider(when, 'desktop-min-visible', 'Visible desktop needed',
+                    'Play only when at least this much of a screen is uncovered', 1, 60, step=1, unit='%')
+        self.combo(when, 'desktop-fps', 'Frame rate', '30 fps uses about half the power',
+                   [('30 fps', 30), ('60 fps', 60)])
+        self.switch(when, 'desktop-battery', 'Pause on battery', 'Only move while plugged in')
+        desk_rows = (details, when)
+        for group in desk_rows:
+            group.set_sensitive(bool(self.values['desktop-loop']))
+        self._desk_groups = desk_rows
+
         timing = self.page('Timing', 'alarm-symbolic',
                            'Set a duration range. Welcome picks a time inside it for each run.')
         self.duration(self.group(timing, 'Login duration'), 'login')
